@@ -1,0 +1,1204 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: bitbankAPI
+
+Parameters:
+
+  Project:
+    Description: "Project Name"
+    Type: String
+    Default: "bitbankapi"
+
+  Stage:
+    Description: "Environment stage"
+    Type: String
+    Default: "prod"
+    
+  EnableDynamoDBTableEncryption:
+    Type: String
+    Description: This is used to specify if the DynamoDB tables should be encrypted.
+    Default: true
+    AllowedValues:
+      - true
+      - false
+    
+  DynamoDBTableBillingMode:
+    Type: String
+    Description: "This is used to configure the billing mode on the DynamoDB tables."
+    Default: PAY_PER_REQUEST
+    AllowedValues:
+      - PROVISIONED
+      - PAY_PER_REQUEST
+      
+  WebContentsBucketBaseName:
+    Type: String
+    Description: "WebBucket base name"
+    Default: "webcontents"
+    
+  HostedZoneName:
+    Description: "DomainName"
+    Type: String
+    
+  S3DomainName:
+    Description: "S3 DomainName, format of which is Project-Stage"
+    Type: String
+    
+  AcmCertificateArn:
+    Description: "Cerification Arn"
+    Type: String
+    
+  APIDomainName:
+    Description: "Api domain name"
+    Type: String
+    Default: "api"
+    
+  BitbankApiKey:
+    Type: String
+    Description: "Bitbank Api Key"
+  
+  BitbankSecretKey:
+    Type: String
+    Description: "Bitbank Secret Key"
+    
+  LINEApiKey:
+    Type: String
+    Description: "LINE Api Key"
+    
+Conditions:
+  
+  IsDynamoDBBillingModeProvisioned: !Equals
+    - !Ref DynamoDBTableBillingMode
+    - PROVISIONED
+    
+  IsProd:
+    !Equals [!Ref Stage, prod]
+
+
+Resources:
+
+  CancelOrderFunctionApiPermissiondev:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      FunctionName: !Ref CancelOrderFunction
+
+  ControlOrderFunctionApiPermissiondev:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      FunctionName: !Ref ControlOrderFunction
+      
+  ControlSpecialOrderFunctionApiPermissiondev:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      FunctionName: !Ref ControlSpecialOrderFunction
+  
+  GetAssetsFunctionApiEventPermissiondev:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      FunctionName: !Ref GetAssetsFunction
+  
+  GetOrdersFunctionApiEventPermissiondev:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      FunctionName: !Ref GetOrdersFunction
+      
+  GetStopOrdersFunctionApiEventPermissiondev:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      FunctionName: !Ref GetStopOrdersFunction
+  
+  CheckContractRulePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      FunctionName: !Ref CheckContractFunction
+      
+  CheckPriceRulePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      FunctionName: !Ref CheckPriceFunction
+  
+  RestApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Body:
+        info:
+          version: '1.0'
+          title: !Sub "${Project}-${Stage}-apigateway"
+        paths:
+          /cancelOrder:
+            post:
+              produces:
+              - "application/json"
+              security:
+                - authorizer: [] 
+              responses:
+                "200":
+                  description: "200 response"
+                  schema:
+                    $ref: "#/definitions/Empty"
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: "string"
+              x-amazon-apigateway-integration:
+                uri: !Sub >-
+                  arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CancelOrderFunction.Arn}/invocations
+                responses:
+                  default:
+                    statusCode: "200"
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                passthroughBehavior: "when_no_match"
+                httpMethod: "POST"
+                type: "aws_proxy"
+            options:
+              x-amazon-apigateway-integration:
+                type: mock
+                requestTemplates:
+                  application/json: |
+                    {
+                      "statusCode" : 200
+                    }
+                responses:
+                  default:
+                    statusCode: '200'
+                    responseTemplates:
+                      application/json: |
+                        {}
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: '''*'''
+                      method.response.header.Access-Control-Allow-Headers: '''Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'''
+                      method.response.header.Access-Control-Allow-Methods: '''OPTIONS,POST'''
+              consumes:
+                - application/json
+              summary: CORS support
+              responses:
+                '200':
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+                  description: Default response for CORS method
+              produces:
+                - application/json
+          
+          /controlOrder:
+            post:
+              produces:
+              - "application/json"
+              security:
+                - authorizer: [] 
+              responses:
+                "200":
+                  description: "200 response"
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: "string"
+              x-amazon-apigateway-integration:
+                uri: !Sub >-
+                  arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ControlOrderFunction.Arn}/invocations
+                responses:
+                  default:
+                    statusCode: "200"
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                passthroughBehavior: "when_no_match"
+                httpMethod: "POST"
+                type: "aws_proxy"
+            options:
+              x-amazon-apigateway-integration:
+                type: mock
+                requestTemplates:
+                  application/json: |
+                    {
+                      "statusCode" : 200
+                    }
+                responses:
+                  default:
+                    statusCode: '200'
+                    responseTemplates:
+                      application/json: |
+                        {}
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: '''*'''
+                      method.response.header.Access-Control-Allow-Headers: '''Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'''
+                      method.response.header.Access-Control-Allow-Methods: '''OPTIONS,POST'''
+              consumes:
+                - application/json
+              summary: CORS support
+              responses:
+                '200':
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+                  description: Default response for CORS method
+              produces:
+                - application/json
+                
+          /controlSpecialOrder:
+            post:
+              produces:
+              - "application/json"
+              security:
+                - authorizer: [] 
+              responses:
+                "200":
+                  description: "200 response"
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: "string"
+              x-amazon-apigateway-integration:
+                uri: !Sub >-
+                  arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ControlSpecialOrderFunction.Arn}/invocations
+                responses:
+                  default:
+                    statusCode: "200"
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                passthroughBehavior: "when_no_match"
+                httpMethod: "POST"
+                type: "aws_proxy"
+            options:
+              x-amazon-apigateway-integration:
+                type: mock
+                requestTemplates:
+                  application/json: |
+                    {
+                      "statusCode" : 200
+                    }
+                responses:
+                  default:
+                    statusCode: '200'
+                    responseTemplates:
+                      application/json: |
+                        {}
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: '''*'''
+                      method.response.header.Access-Control-Allow-Headers: '''Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'''
+                      method.response.header.Access-Control-Allow-Methods: '''OPTIONS,POST'''
+              consumes:
+                - application/json
+              summary: CORS support
+              responses:
+                '200':
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+                  description: Default response for CORS method
+              produces:
+                - application/json
+                
+                
+          /getOrders:
+            get:
+              produces:
+              - "application/json"
+              security:
+                - authorizer: []
+              responses:
+                "200":
+                  description: "200 response"
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: "string"
+              x-amazon-apigateway-integration:
+                uri: !Sub >-
+                  arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetOrdersFunction.Arn}/invocations
+                responses:
+                  default:
+                    statusCode: "200"
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                passthroughBehavior: "when_no_match"
+                httpMethod: "POST"
+                type: "aws_proxy"
+            options:
+              x-amazon-apigateway-integration:
+                type: mock
+                schema:
+                  $ref: "#/definitions/Empty"
+                requestTemplates:
+                  application/json: |
+                    {
+                      "statusCode" : 200
+                    }
+                responses:
+                  default:
+                    statusCode: '200'
+                    responseTemplates:
+                      application/json: {}
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: '''*'''
+                      method.response.header.Access-Control-Allow-Headers: '''Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'''
+                      method.response.header.Access-Control-Allow-Methods: '''OPTIONS,GET,POST'''
+              consumes:
+                - application/json
+              summary: CORS support
+              responses:
+                '200':
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+                  description: Default response for CORS method
+              produces:
+                - application/json
+                
+          /getAssets:
+            get:
+              produces:
+              - "application/json"
+              security:
+                - authorizer: []
+              responses:
+                "200":
+                  description: "200 response"
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: "string"
+              x-amazon-apigateway-integration:
+                uri: !Sub >-
+                  arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetAssetsFunction.Arn}/invocations
+                responses:
+                  default:
+                    statusCode: "200"
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                passthroughBehavior: "when_no_match"
+                httpMethod: "POST"
+                type: "aws_proxy"
+            options:
+              x-amazon-apigateway-integration:
+                type: mock
+                requestTemplates:
+                  application/json: |
+                    {
+                      "statusCode" : 200
+                    }
+                responses:
+                  default:
+                    statusCode: '200'
+                    responseTemplates:
+                      application/json: {}
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: '''*'''
+                      method.response.header.Access-Control-Allow-Headers: '''Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'''
+                      method.response.header.Access-Control-Allow-Methods: '''OPTIONS,GET,POST'''
+              consumes:
+                - application/json
+              summary: CORS support
+              responses:
+                '200':
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+                  description: Default response for CORS method
+              produces:
+                - application/json
+                
+          /getStopOrders:
+            get:
+              produces:
+              - "application/json"
+              security:
+                - authorizer: [] 
+              responses:
+                "200":
+                  description: "200 response"
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: "string"
+              x-amazon-apigateway-integration:
+                uri: !Sub >-
+                  arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetStopOrdersFunction.Arn}/invocations
+                responses:
+                  default:
+                    statusCode: "200"
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                passthroughBehavior: "when_no_match"
+                httpMethod: "POST"
+                type: "aws_proxy"
+            options:
+              x-amazon-apigateway-integration:
+                type: mock
+                schema:
+                  $ref: "#/definitions/Empty"
+                requestTemplates:
+                  application/json: |
+                    {
+                      "statusCode" : 200
+                    }
+                responses:
+                  default:
+                    statusCode: '200'
+                    responseTemplates:
+                      application/json: {}
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: '''*'''
+                      method.response.header.Access-Control-Allow-Headers: '''Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'''
+                      method.response.header.Access-Control-Allow-Methods: '''OPTIONS,GET,POST'''
+              consumes:
+                - application/json
+              summary: CORS support
+              responses:
+                '200':
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                    Access-Control-Allow-Headers:
+                      type: string
+                  description: Default response for CORS method
+              produces:
+                - application/json
+            
+        definitions:
+          Empty:
+            type: object
+            title: Empty Schema
+        
+        x-amazon-apigateway-gateway-responses:
+          UNAUTHORIZED:
+            statusCode: 401
+            responseParameters:
+              gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+            responseTemplates:
+              application/json: "{\"message\":$context.error.messageString}" 
+              
+        securityDefinitions:
+          authorizer:
+            type: "apiKey"
+            name: "Authorization"
+            in: "header"
+            x-amazon-apigateway-authtype: "cognito_user_pools"
+            x-amazon-apigateway-authorizer:
+              providerARNs:
+              - !GetAtt UserPool.Arn
+              type: "cognito_user_pools"
+        
+        swagger: '2.0'
+  
+  ApiGatewayDeployment:
+    Type: AWS::ApiGateway::Deployment
+    Properties:
+      RestApiId:
+        Ref: RestApi
+      Description: "apigateway deployment"
+      StageName: !Ref Stage
+  
+  ApiGatewayDomainName:
+    Type: AWS::ApiGateway::DomainName
+    Properties:
+      CertificateArn: !Ref AcmCertificateArn
+      DomainName: !If [IsProd, !Sub "${APIDomainName}-${Project}.${HostedZoneName}", !Sub "${APIDomainName}-${Project}-${Stage}.${HostedZoneName}"]
+    
+    
+  ApiGatewayDomainMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    Properties:
+      DomainName: !Ref ApiGatewayDomainName
+      Stage: !Ref Stage
+      RestApiId: !Ref RestApi
+    
+    
+  Route53RecordSet:
+    Type: AWS::Route53::RecordSetGroup
+    Properties:
+      HostedZoneName: !Sub "${HostedZoneName}."
+      RecordSets:
+        - Name: !If [IsProd, !Sub "${APIDomainName}-${Project}.${HostedZoneName}.", !Sub "${APIDomainName}-${Project}-${Stage}.${HostedZoneName}."]
+          Type: A
+          AliasTarget:
+            HostedZoneId: Z2FDTNDATAQYW2
+            DNSName: !GetAtt ApiGatewayDomainName.DistributionDomainName
+  
+      
+  CancelOrderFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${Project}-${Stage}-CancelOrderFunction"
+      Handler: index.handler
+      Runtime: nodejs10.x
+      CodeUri: ./cancelOrder
+      Role: !GetAtt CancelOrderRole.Arn
+      Timeout: 28
+      Environment:
+        Variables:
+          BitbankApiKey: !Ref BitbankApiKey
+          BitbankSecretKey: !Ref BitbankSecretKey
+          LINEApiKey: !Ref LINEApiKey
+      
+  CheckContractFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${Project}-${Stage}-CheckContractFunction"
+      Handler: index.handler
+      Runtime: nodejs10.x
+      CodeUri: ./checkContract
+      Role: !GetAtt CheckContractRole.Arn
+      Timeout: 28
+      Environment:
+        Variables:
+          BitbankApiKey: !Ref BitbankApiKey
+          BitbankSecretKey: !Ref BitbankSecretKey
+          LINEApiKey: !Ref LINEApiKey
+      
+  CheckPriceFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${Project}-${Stage}-CheckPriceFunction"
+      Handler: index.handler
+      Runtime: nodejs10.x
+      CodeUri: ./checkPrice
+      Role: !GetAtt CheckPriceRole.Arn
+      Timeout: 28
+      Environment:
+        Variables:
+          TableName: !Ref PriceCheckTable
+      
+  CheckStopOrderFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${Project}-${Stage}-CheckStopOrderFunction"
+      Handler: index.handler
+      Runtime: nodejs10.x
+      CodeUri: ./checkStopOrder
+      Role: !GetAtt CheckStopOrderRole.Arn
+      Timeout: 28
+      Environment:
+        Variables:
+          LambdaName: !Ref ControlOrderFunction
+          TableName: !Ref StopCheckTable
+  
+  ControlOrderFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${Project}-${Stage}-ControlOrderFunction"
+      Handler: index.handler
+      Runtime: nodejs10.x
+      CodeUri: ./controlOrder
+      Role: !GetAtt ControlOrderRole.Arn
+      Environment:
+        Variables:
+          BitbankApiKey: !Ref BitbankApiKey
+          BitbankSecretKey: !Ref BitbankSecretKey
+      
+  ControlSpecialOrderFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${Project}-${Stage}-ControlSpecialOrderFunction"
+      Handler: index.handler
+      Runtime: nodejs10.x
+      CodeUri: ./controlSpecialOrder
+      Role: !GetAtt ControlSpecialOrderRole.Arn
+      Environment:
+        Variables:
+          TableName: !Ref StopCheckTable
+      
+  GetAssetsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${Project}-${Stage}-GetAssetsFunction"
+      Handler: index.handler
+      Runtime: nodejs10.x
+      CodeUri: ./getAssets
+      Role: !GetAtt GetAssetsRole.Arn
+      Environment:
+        Variables:
+          BitbankApiKey: !Ref BitbankApiKey
+          BitbankSecretKey: !Ref BitbankSecretKey
+      
+  GetOrdersFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${Project}-${Stage}-GetOrdersFunction"
+      Handler: index.handler
+      Runtime: nodejs10.x
+      CodeUri: ./getOrders
+      Role: !GetAtt GetOrdersRole.Arn
+      Timeout: 28
+      Environment:
+        Variables:
+          BitbankApiKey: !Ref BitbankApiKey
+          BitbankSecretKey: !Ref BitbankSecretKey
+      
+  GetStopOrdersFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${Project}-${Stage}-GetStopOrdersFunction"
+      Handler: index.handler
+      Runtime: nodejs10.x
+      CodeUri: ./getStopOrders
+      Role: !GetAtt GetStopOrdersRole.Arn
+      Timeout: 28
+      Environment:
+        Variables:
+          TableName: !Ref StopCheckTable
+      
+  CancelOrderRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${Project}-${Stage}-CancelOrderRole"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "lambda.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        
+      MaxSessionDuration: 3600
+      Path: "/"
+      
+  CheckContractRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${Project}-${Stage}-CheckContractRole"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "lambda.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        
+      MaxSessionDuration: 3600
+      Path: "/"
+  
+  CheckPriceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${Project}-${Stage}-CheckPriceRole"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "lambda.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - !Ref PriceCheckTableReadPolicy
+        
+      MaxSessionDuration: 3600
+      Path: "/"
+      
+  CheckStopOrderRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${Project}-${Stage}-CheckStopOrderRole"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "lambda.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - !Ref StopCheckTableReadPolicy
+        - !Ref StopCheckTableWritePolicy
+        
+      MaxSessionDuration: 3600
+      Path: "/"
+      
+  ControlOrderRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${Project}-${Stage}-ControlOrderRole"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "lambda.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        
+      MaxSessionDuration: 3600
+      Path: "/"
+      
+  ControlSpecialOrderRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${Project}-${Stage}-ControlSpecialOrderRole"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "lambda.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - !Ref StopCheckTableReadPolicy
+        - !Ref StopCheckTableWritePolicy
+        
+      MaxSessionDuration: 3600
+      Path: "/"  
+      
+  GetAssetsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${Project}-${Stage}-GetAssetsRole"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "lambda.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        
+      MaxSessionDuration: 3600
+      Path: "/"  
+      
+  GetOrdersRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${Project}-${Stage}-GetOrdersRole"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "lambda.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        
+      MaxSessionDuration: 3600
+      Path: "/"    
+  
+  GetStopOrdersRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${Project}-${Stage}-GetStopOrdersRole"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "lambda.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - !Ref StopCheckTableReadPolicy
+        
+      MaxSessionDuration: 3600
+      Path: "/"  
+  
+  InvokeControlOrderFunctionPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub "${Project}-${Stage}-InvokeControlOrderFunctionPolicy"
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          -
+            Effect: Allow
+            Action:
+              - Lambda:invoke*
+            Resource: !GetAtt ControlOrderFunction.Arn
+    
+  
+  StopCheckTableWritePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub "${Project}-${Stage}-StopCheckTableWritePolicy"
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          -
+            Effect: Allow
+            Action:
+              - dynamoDB:PutItem
+              - dynamoDB:UpdateItem
+              - dynamoDB:DeleteItem
+            Resource: !GetAtt StopCheckTable.Arn
+            
+  StopCheckTableReadPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub "${Project}-${Stage}-StopCheckTableReadPolicy"
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          -
+            Effect: Allow
+            Action:
+              - dynamoDB:ListTables
+              - dynamoDB:GetItem
+              - dynamoDB:Query
+              - dynamoDB:Scan
+            Resource: !GetAtt StopCheckTable.Arn
+            
+            
+  PriceCheckTableReadPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub "${Project}-${Stage}-PriceCheckTableReadPolicy"
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          -
+            Effect: Allow
+            Action:
+              - dynamoDB:ListTables
+              - dynamoDB:GetItem
+              - dynamoDB:Query
+              - dynamoDB:Scan
+            Resource: !GetAtt PriceCheckTable.Arn
+  
+  
+  StopCheckTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${Project}-${Stage}-stopCheck"
+      AttributeDefinitions:
+        - AttributeName: coin_pair
+          AttributeType: S
+        - AttributeName: price
+          AttributeType: N
+      KeySchema:
+        - AttributeName: coin_pair
+          KeyType: HASH
+        - AttributeName: price
+          KeyType: RANGE
+      ProvisionedThroughput: !If
+        - IsDynamoDBBillingModeProvisioned
+        - ReadCapacityUnits: "5"
+          WriteCapacityUnits: "5"
+        - !Ref "AWS::NoValue"
+      BillingMode: !If
+        - IsDynamoDBBillingModeProvisioned
+        - !Ref "AWS::NoValue"
+        - !Ref DynamoDBTableBillingMode
+      SSESpecification:
+        SSEEnabled: !Ref EnableDynamoDBTableEncryption
+        
+  PriceCheckTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${Project}-${Stage}-priceCheck"
+      AttributeDefinitions:
+        - AttributeName: coin_pair
+          AttributeType: S
+        - AttributeName: price
+          AttributeType: N
+      KeySchema:
+        - AttributeName: coin_pair
+          KeyType: HASH
+        - AttributeName: price
+          KeyType: RANGE
+      ProvisionedThroughput: !If
+        - IsDynamoDBBillingModeProvisioned
+        - ReadCapacityUnits: "5"
+          WriteCapacityUnits: "5"
+        - !Ref "AWS::NoValue"
+      BillingMode: !If
+        - IsDynamoDBBillingModeProvisioned
+        - !Ref "AWS::NoValue"
+        - !Ref DynamoDBTableBillingMode
+      SSESpecification:
+        SSEEnabled: !Ref EnableDynamoDBTableEncryption
+        
+        
+  CheckContractRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub "${Project}-${Stage}-CheckContractRule"
+      ScheduleExpression: 'rate(1 minute)'
+      State: "ENABLED"
+      Targets:
+        - Arn: !GetAtt CheckContractFunction.Arn
+          Id: "CheckContractRule"
+          
+  CheckPriceRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub "${Project}-${Stage}-CheckPriceRule"
+      ScheduleExpression: 'rate(1 minute)'
+      State: "ENABLED"
+      Targets:
+        - Arn: !GetAtt CheckPriceFunction.Arn
+          Id: "CheckPriceRule"
+          
+        
+  WebcontentBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${Project}-${Stage}-${WebContentsBucketBaseName}"
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: error.html
+      AccessControl: Private
+      VersioningConfiguration:
+        Status: Suspended
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: True
+        BlockPublicPolicy: True
+        IgnorePublicAcls: True
+        RestrictPublicBuckets: True
+        
+  WebContentBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref WebcontentBucket
+      PolicyDocument:
+        Statement:
+          - Action: s3:GetObject
+            Effect: Allow
+            Resource: !Sub "${WebcontentBucket.Arn}/*"
+            Principal:
+              AWS: !Sub arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontOriginAccessIdentity}
+        
+  Cloudfrontnet:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Aliases:
+          - !Sub "${S3DomainName}.${HostedZoneName}"
+        Enabled: true
+        PriceClass: PriceClass_All
+        DefaultCacheBehavior:
+          TargetOriginId: !Sub "S3-${Project}-${Stage}-${WebContentsBucketBaseName}/*"
+          ViewerProtocolPolicy: redirect-to-https
+          MinTTL: 0
+          AllowedMethods:
+            - HEAD
+            - GET
+            - OPTIONS
+          CachedMethods:
+            - HEAD
+            - GET
+          ForwardedValues:
+            Headers:
+              - Authorization
+              - Origin
+              - Access-Control-Request-Method
+              - Access-Control-Request-Headers
+            Cookies:
+              Forward: none
+            QueryString: false
+        Origins:
+          - DomainName: !Sub "${Project}-${Stage}-${WebContentsBucketBaseName}.s3.amazonaws.com"
+            Id: !Sub "S3-${Project}-${Stage}-${WebContentsBucketBaseName}/*"
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub "origin-access-identity/cloudfront/${CloudFrontOriginAccessIdentity}"
+        CustomErrorResponses:
+          -
+            ErrorCachingMinTTL: 10
+            ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+        Restrictions:
+          GeoRestriction:
+            RestrictionType: none
+            Locations: []
+        ViewerCertificate:
+          SslSupportMethod: sni-only
+          AcmCertificateArn: !Ref AcmCertificateArn
+        # Logging:
+        #   Bucket: !GetAtt LogBucket.DomainName
+        #   IncludeCookies: True
+        #   Prefix: "cloudfront/"
+          
+  CloudFrontOriginAccessIdentity:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: !Sub "${Project}-${Stage}-CloudFrontOriginAccessIdentity"
+        
+  WebContentRoute53:
+    Type: AWS::Route53::RecordSetGroup
+    Properties:
+      HostedZoneName: !Sub "${HostedZoneName}."
+      RecordSets:
+        - Name: !Sub "${S3DomainName}.${HostedZoneName}."
+          Type: A
+          AliasTarget:
+            HostedZoneId: Z2FDTNDATAQYW2
+            DNSName: !GetAtt Cloudfrontnet.DomainName
+  
+  
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub "${Project}-${Stage}-UserPool"
+      AdminCreateUserConfig:
+          AllowAdminCreateUserOnly: false
+      AliasAttributes:
+        - email
+        - phone_number
+        - preferred_username
+      AutoVerifiedAttributes:
+        - email
+        - phone_number
+      UsernameConfiguration:
+        CaseSensitive: False
+      EmailVerificationMessage: "Your verification code is {####}."
+      EmailVerificationSubject: "Your verification code"
+      SmsAuthenticationMessage: "Your verification code is {####}."
+      SmsVerificationMessage: "Your verification code is {####}."
+      MfaConfiguration: 'OFF'
+      SmsConfiguration:
+        SnsCallerArn: !GetAtt UserPoolSMSRole.Arn
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+          RequireUppercase: false
+      Schema:
+        - AttributeDataType: "String"
+          DeveloperOnlyAttribute: false
+          Mutable: true
+          Name: "email"
+          StringAttributeConstraints:
+            MaxLength: "2048"
+            MinLength: "0"
+          Required: true
+        - AttributeDataType: "String"
+          DeveloperOnlyAttribute: false
+          Mutable: true
+          Name: "phone_number"
+          NumberAttributeConstraints:
+            MaxValue: "21"
+            MinValue: "0"
+          Required: true
+      SmsAuthenticationMessage:  "Your authentication code is {####}."
+      SmsVerificationMessage: "Your verification code is {####}."
+  
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub "${Project}-${Stage}-UserPoolClient"
+      ExplicitAuthFlows:
+        - ALLOW_ADMIN_USER_PASSWORD_AUTH
+        - ALLOW_CUSTOM_AUTH
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      GenerateSecret: false
+      UserPoolId:
+        Ref: UserPool
+
+  UserPoolSMSRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${Project}-${Stage}-UserPool-SMS-Role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "cognito-idp.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - !Ref UserPoolSMSPolicy
+      MaxSessionDuration: 3600
+      Path: "/"
+        
+  UserPoolSMSPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub "${Project}-${Stage}-UserPool-SMS-Policy"
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          -
+            Effect: "Allow"
+            Action:
+              - "sns:publish"
+            Resource: "*"   
+            
+Outputs:
+  
+  APIURL:
+    Description: API Gateway URL
+    Value: !Ref ApiGatewayDomainName
+    
+  UserPoolID:
+    Description: Cognito UserPool Id
+    Value: !Ref UserPool
+    
+  UserPoolClientID:
+    Description: Cognito UserPoolClient Id
+    Value: !Ref UserPoolClient
+    
+  FrontURL:
+    Description: S3 Static Content URL
+    Value: !Sub "${S3DomainName}.${HostedZoneName}."
+    
+  

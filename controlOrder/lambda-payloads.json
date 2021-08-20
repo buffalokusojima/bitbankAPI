@@ -1,0 +1,15 @@
+{
+    "ControlOrderFunction": {
+        "lambda": {
+            "body": {
+                "coin_pair": "xrp_jpy",
+                "side": "buy",
+                "size": 10,
+                "price": 26,
+                "type": "limit",
+                "parameters": "",
+                "order_method": ""
+            }
+        }
+    }
+}

@@ -1,0 +1,14 @@
+{
+    "checkPrice": {
+        "lambda": {}
+    },
+    "CheckPriceFunction": {
+        "lambda": {}
+    },
+    "": {
+        "lambda": {}
+    },
+    "CheckStopOrderFunction": {
+        "lambda": {}
+    }
+}

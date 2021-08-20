@@ -1,0 +1,14 @@
+{
+    "ControlSpecialOrderFunction": {
+        "lambda": {
+            "body": {
+                "coin_pair": "xrp_jpy",
+                "price": "100",
+                "size": "100",
+                "side": "buy",
+                "type": "stop",
+                "mode": "delete"
+            }
+        }
+    }
+}
