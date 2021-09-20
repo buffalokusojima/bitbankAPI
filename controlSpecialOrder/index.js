@@ -197,7 +197,7 @@ const putDataToDynamoDB = async (params) => {
 const deleteDataFromDynamoDB = async (params) => {
         
     try{
-        ddb.deleteItem(params).promise();
+        await ddb.deleteItem(params).promise();
     }catch(err){
         console.error(err);
     }
