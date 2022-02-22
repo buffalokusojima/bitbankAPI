@@ -552,7 +552,7 @@ Resources:
     Properties:
       FunctionName: !Sub "${Project}-${Stage}-CancelOrderFunction"
       Handler: index.handler
-      Runtime: nodejs10.x
+      Runtime: nodejs14.x
       CodeUri: ./cancelOrder
       Role: !GetAtt CancelOrderRole.Arn
       Timeout: 28
@@ -567,7 +567,7 @@ Resources:
     Properties:
       FunctionName: !Sub "${Project}-${Stage}-CheckContractFunction"
       Handler: index.handler
-      Runtime: nodejs10.x
+      Runtime: nodejs14.x
       CodeUri: ./checkContract
       Role: !GetAtt CheckContractRole.Arn
       Timeout: 28
@@ -582,7 +582,7 @@ Resources:
     Properties:
       FunctionName: !Sub "${Project}-${Stage}-CheckPriceFunction"
       Handler: index.handler
-      Runtime: nodejs10.x
+      Runtime: nodejs14.x
       CodeUri: ./checkPrice
       Role: !GetAtt CheckPriceRole.Arn
       Timeout: 28
@@ -595,7 +595,7 @@ Resources:
     Properties:
       FunctionName: !Sub "${Project}-${Stage}-CheckStopOrderFunction"
       Handler: index.handler
-      Runtime: nodejs10.x
+      Runtime: nodejs14.x
       CodeUri: ./checkStopOrder
       Role: !GetAtt CheckStopOrderRole.Arn
       Timeout: 28
@@ -609,7 +609,7 @@ Resources:
     Properties:
       FunctionName: !Sub "${Project}-${Stage}-ControlOrderFunction"
       Handler: index.handler
-      Runtime: nodejs10.x
+      Runtime: nodejs14.x
       CodeUri: ./controlOrder
       Role: !GetAtt ControlOrderRole.Arn
       Environment:
@@ -622,7 +622,7 @@ Resources:
     Properties:
       FunctionName: !Sub "${Project}-${Stage}-ControlSpecialOrderFunction"
       Handler: index.handler
-      Runtime: nodejs10.x
+      Runtime: nodejs14.x
       CodeUri: ./controlSpecialOrder
       Role: !GetAtt ControlSpecialOrderRole.Arn
       Environment:
@@ -634,7 +634,7 @@ Resources:
     Properties:
       FunctionName: !Sub "${Project}-${Stage}-GetAssetsFunction"
       Handler: index.handler
-      Runtime: nodejs10.x
+      Runtime: nodejs14.x
       CodeUri: ./getAssets
       Role: !GetAtt GetAssetsRole.Arn
       Environment:
@@ -647,7 +647,7 @@ Resources:
     Properties:
       FunctionName: !Sub "${Project}-${Stage}-GetOrdersFunction"
       Handler: index.handler
-      Runtime: nodejs10.x
+      Runtime: nodejs14.x
       CodeUri: ./getOrders
       Role: !GetAtt GetOrdersRole.Arn
       Timeout: 28
@@ -661,7 +661,7 @@ Resources:
     Properties:
       FunctionName: !Sub "${Project}-${Stage}-GetStopOrdersFunction"
       Handler: index.handler
-      Runtime: nodejs10.x
+      Runtime: nodejs14.x
       CodeUri: ./getStopOrders
       Role: !GetAtt GetStopOrdersRole.Arn
       Timeout: 28
