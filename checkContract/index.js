@@ -81,7 +81,7 @@ exports.handler = async (event, context, callback) => {
         
     process.env['since'] = date;
     
-    const message = '';
+    let message = '';
     const toDay = new Date(momentTimezone(new Date()).tz('Asia/Tokyo').format('YYYY/MM/DD HH:mm:ss'));
     
     for(let i=0; i<data.length; i++){   
