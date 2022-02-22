@@ -527,12 +527,12 @@ Resources:
       DomainName: !If [IsProd, !Sub "${APIDomainName}-${Project}.${HostedZoneName}", !Sub "${APIDomainName}-${Project}-${Stage}.${HostedZoneName}"]
     
     
-  ApiGatewayDomainMapping:
-    Type: AWS::ApiGateway::BasePathMapping
-    Properties:
-      DomainName: !Ref ApiGatewayDomainName
-      Stage: !Ref Stage
-      RestApiId: !Ref RestApi
+  # ApiGatewayDomainMapping:
+  #   Type: AWS::ApiGateway::BasePathMapping
+  #   Properties:
+  #     DomainName: !Ref ApiGatewayDomainName
+  #     Stage: !Ref Stage
+  #     RestApiId: !Ref RestApi
     
     
   Route53RecordSet:
